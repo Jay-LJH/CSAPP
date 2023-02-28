@@ -1,0 +1,40 @@
+    .pos 0
+	irmovq stack, %rsp  	# Set up stack pointer
+	call main		# Execute main program
+	halt			# Terminate program 
+.align 8
+ele1:
+    .quad 0x00a
+    .quad ele2
+ele2:
+    .quad 0x0b0
+    .quad ele3
+ele3:
+    .quad 0xc00
+    .quad 0
+main:	
+    irmovq ele1,%rdi
+    irmovq dst,%rsi
+    irmovq $6,%rdx
+	call copy_block
+	ret
+copy_block:
+    xorq %rax,%rax
+    irmovq $1,%r9
+    irmovq $8,%r10
+    andq %rdx,%rdx
+    jmp test
+loop:
+    mrmovq (%rdi),%r11
+    rmmovq %r11,(%rsi)
+    addq %r10,%rdi
+    addq %r10,%rsi
+    xorq %r11,%rax
+    subq %r9,%rdx
+test:
+    jne loop
+    ret
+.pos 0x200
+stack:
+.pos 0x300
+dst:
