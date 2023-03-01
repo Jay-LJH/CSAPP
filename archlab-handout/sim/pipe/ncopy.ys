@@ -14,7 +14,7 @@
 ncopy:
 
 ##################################################################
-# I just changed all the addq into iaddq, then got a incredible 
+# I just changed all the addq to iaddq, then got a incredible 
 #improvement, a average CPE of 0.89
 # You can modify this portion
 	# Loop header
