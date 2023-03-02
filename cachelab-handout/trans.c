@@ -31,6 +31,7 @@ void transpose_submit(int M, int N, int A[N][M], int B[M][N])
             {
                 for (int y = 0; y < 8; y++)
                 {
+                    if(x+j<N && i+y<M)
                     temp[x][y] = A[j + x][i + y];
                 }
             }
@@ -47,28 +48,12 @@ void transpose_submit(int M, int N, int A[N][M], int B[M][N])
             {
                 for (int y = 0; y < 8; y++)
                 {
-                    B[i + x][j + y] = temp[x][y];
+                    if(x+i<M && j+y<N)
+                        B[i + x][j + y] = temp[x][y];
                 }
             }
         }
     }
-    //I'm confused that I couldn't handle the situation that M/N not equal
-    //to 8 times sometime, but it work well and gain full mark in the remain
-    //two circumstances.
-    
-    if(M%8){
-        for(int i=(M/8)*8;i<M;i++){
-            for(int j=0;j<N;j++)
-            B[i][j]=A[j][i];
-        }
-    }
-    if(N%8){
-        for(int i=(N/8)*8;i<N;i++){
-            for(int j=0;j<M;j++)
-            B[j][i]=A[i][j];
-        }
-    }
-    is_transpose( M, N, A, B);
 }
 
 /*
