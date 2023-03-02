@@ -1,3 +1,7 @@
+
+
+
+
 /********************************************************
  * Kernels to be optimized for the CS:APP Performance Lab
  ********************************************************/
@@ -10,13 +14,11 @@
  * Please fill in the following team struct 
  */
 team_t team = {
-    "bovik",              /* Team name */
-
-    "Harry Q. Bovik",     /* First member full name */
-    "bovik@nowhere.edu",  /* First member email address */
-
-    "",                   /* Second member full name (leave blank if none) */
-    ""                    /* Second member email addr (leave blank if none) */
+    "test",              /* Team name */
+    "1",     /* First member full name */
+    "1" ,/* First member email address */
+    "null",
+    "null"
 };
 
 /***************
@@ -34,7 +36,6 @@ char naive_rotate_descr[] = "naive_rotate: Naive baseline implementation";
 void naive_rotate(int dim, pixel *src, pixel *dst) 
 {
     int i, j;
-
     for (i = 0; i < dim; i++)
 	for (j = 0; j < dim; j++)
 	    dst[RIDX(dim-1-j, i, dim)] = src[RIDX(i, j, dim)];
@@ -45,9 +46,31 @@ void naive_rotate(int dim, pixel *src, pixel *dst)
  * IMPORTANT: This is the version you will be graded on
  */
 char rotate_descr[] = "rotate: Current working version";
+#define blockSize 32
 void rotate(int dim, pixel *src, pixel *dst) 
 {
-    naive_rotate(dim, src, dst);
+    int n=dim/blockSize;
+    pixel temp[blockSize][blockSize];
+    pixel temp1[blockSize][blockSize];
+    for(int i=0;i<n;i++){
+        for(int j=0;j<n;j++){
+            for(int x=0;x<blockSize;x++){
+                for(int y=0;y<blockSize;y++){
+                    temp[x][y]=src[RIDX(i*blockSize+x, j*blockSize+y, dim)];
+                }
+            }
+            for(int x=0;x<blockSize;x++){
+                for(int y=0;y<blockSize;y++){
+                    temp1[blockSize-1-y][x]=temp[x][y];
+                }
+            }
+            for(int x=0;x<blockSize;x++){
+                for(int y=0;y<blockSize;y++){
+                    dst[RIDX(dim-(1+j)*blockSize+x, i*blockSize+y,dim)]=temp1[x][y];
+                }
+            }
+        }
+    }
 }
 
 /*********************************************************************
