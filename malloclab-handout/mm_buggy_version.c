@@ -14,7 +14,6 @@
 #include <assert.h>
 #include <unistd.h>
 #include <string.h>
-#include <math.h>
 #include "mm.h"
 #include "memlib.h"
 
@@ -51,17 +50,25 @@ team_t team = {
 #define WORD 4
 #define DWORD 8
 #define GET(p) (*(unsigned int *)(p))
+#define GET_POINTER(p) ((int *)(long)(GET(p)))
 #define PUT(p, val) (*(unsigned int *)(p) = (val))
-#define GET_SIZE(p) (GET(p) >> 3)
-#define VALID(p) (GET(p) & 1)
-#define SIZE2ALIGN(size) (ALIGN(size + DWORD))
-#define NEXT_P(p) (((char *)p) + GET_SIZE(p))
-#define FOOT(p) (((char *)p) + GET_SIZE(p) - WORD)
+#define PUT_POINTER(p,val) (*(int **)(p) = (val))
+#define SIZE2ALIGN(size) (ALIGN(size + WORD))
+int *low;
+int round2log2(int num)
+{
+    for (int i = 3; i < 14; i++)
+    {
+        if (num <= (1 << i))
+            return i - 3;
+    }
+    return 11;
+}
 int mm_init(void)
 {
-    int *ptr = mem_sbrk(DWORD);
-    *ptr = 0x1;
-    *(ptr + 1) = 0x1;
+    mem_sbrk(12 * sizeof(void *));
+    low = mem_heap_lo();
+    memset(low, 0, 12 * sizeof(void *));
     return 0;
 }
 
@@ -73,44 +80,36 @@ int mm_init(void)
 void *mm_malloc(size_t size)
 {
     if (size == 0)
-    {
         return NULL;
-    }
     int align_size = SIZE2ALIGN(size);
-    char* p = mem_heap_lo() ;
-    p=p+WORD;
-    int p_size;
-    while ((p_size = GET_SIZE(p)) > 0)
+    int index = round2log2(align_size);
+    int *p = GET_POINTER(low + index);
+    if (p == 0)
     {
-        if (!VALID(p))
-        {
-            if (p_size >= align_size && p_size < 2 * align_size)
-            {
-                PUT(p, GET(p) | 0x1);
-                PUT(FOOT(p), GET(p));
-                return p + WORD;
-            }
-            else if (p_size >= 2 * align_size && p_size < 4 * align_size)
-            {
-                int remain = p_size - align_size;
-                int val = align_size << 3 | 1;
-                PUT(p, val);
-                PUT(FOOT(p), val);
-                char *next_p = NEXT_P(p);
-                val = remain << 3;
-                PUT(next_p, val);
-                PUT(FOOT(next_p), val);
-                return p + WORD;
-            }
-        }
-        p = NEXT_P(p);
+        p = mem_sbrk(align_size);
+        PUT(p, align_size);
+        return p + 1;
     }
-    mem_sbrk(align_size);
-    int val = align_size << 3 | 1;
-    PUT(p, val);
-    PUT(FOOT(p), val);
-    PUT(NEXT_P(p), 1);
-    return p + WORD;
+    if (GET(p) >= align_size)
+    {
+        PUT_POINTER(low + index, GET_POINTER(p + 1));
+        return p + 1;
+    }
+    int *prev_ptr = p;
+    p = GET_POINTER(p + 1);
+    while (p != 0 && GET(p) < align_size)
+    {
+        prev_ptr = p;
+        p = GET_POINTER(p + 1);
+    }
+    if (p == 0)
+    {
+        p = mem_sbrk(align_size);
+        PUT(p, align_size);
+        return p + 1;
+    }
+    PUT_POINTER(prev_ptr+1,GET_POINTER(p+1));
+    return p+1;
 }
 
 /*
@@ -118,18 +117,11 @@ void *mm_malloc(size_t size)
  */
 void mm_free(void *ptr)
 {
-    char *p = ((char *)ptr) - WORD;
-    PUT(p, GET(p) & ~1);
-    PUT(FOOT(p), GET(p));
-    if (!VALID(p - WORD))
-    {
-        int prev_size = GET_SIZE(p - WORD);
-        char *prev_p = p - prev_size;
-        int val = (GET_SIZE(p) + prev_size) << 3;
-        PUT(prev_p, val);
-        PUT(FOOT(p), val);
-    }
-    return;
+    int size=GET(((int *)ptr)-1);
+    int index = round2log2(size);
+    int* p=GET_POINTER(low + index);
+    PUT_POINTER(ptr,p);
+    PUT_POINTER(low + index,ptr-4);
 }
 
 /*
@@ -137,7 +129,7 @@ void mm_free(void *ptr)
  */
 void *mm_realloc(void *ptr, size_t size)
 {
-    int origin_size = GET_SIZE(ptr - WORD);
+    int origin_size = GET(ptr - WORD);
     int align_size = SIZE2ALIGN(size);
     if (origin_size > align_size)
     {
@@ -148,19 +140,3 @@ void *mm_realloc(void *ptr, size_t size)
     mm_free(ptr);
     return p;
 }
-/*
- 0       yes   99%    5694  0.003603  1580
- 1       yes   98%    5848  0.003483  1679
- 2       yes   99%    6648  0.004879  1363
- 3       yes   99%    5380  0.003845  1399
- 4       yes  100%   14400  0.000046311015
- 5       yes   88%    4800  0.002227  2156
- 6       yes   87%    4800  0.002064  2325
- 7       yes   55%   12000  0.049031   245
- 8       yes   51%   24000  0.176654   136
- 9       yes   46%   14401  0.000103140361
-10       yes   50%   14401  0.000043331820
-Total          79%  112372  0.245978   457
-
-Perf index = 48 (util) + 30 (thru) = 78/100
-*/

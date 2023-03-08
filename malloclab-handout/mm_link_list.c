@@ -83,14 +83,10 @@ void bind(int *p, int *prev, int *next)
 }
 void *mm_malloc(size_t size)
 {
-    if (size == 0)
-    {
-        return NULL;
-    }
     int *p = (int *)mem_heap_lo();
     int align_size = SIZE2ALIGN(size);
     int p_size;
-     while (p != NULL && (p_size = GET_SIZE(p)) < align_size)
+    while (p != NULL && (p_size = GET_SIZE(p)) < align_size)
     {
         p = NEXT_BLOCK(p);
     }
@@ -108,16 +104,16 @@ void *mm_malloc(size_t size)
         int val = align_size << 1 | 1;
         PUT(p, val);
         PUT(FOOT(p), val);
-        int *next_p = (int *)NEXT_P(p);
+        int *next_p = (int*)NEXT_P(p);
         val = remain << 1;
         PUT(next_p, val);
         PUT(FOOT(next_p), val);
         int *next = NEXT_BLOCK(p);
         int *prev = PREV_BLOCK(p);
-        PUT_POINTER(next_p + 1, p + 1);
-        PUT_POINTER(next_p + 2, p + 2);
-        bind((int *)next_p, prev, next);
-        return p + 1;
+        PUT_POINTER(next_p+1,p+1);
+        PUT_POINTER(next_p+2,p+2);
+        bind((int *)next_p,prev,next);
+        return p+1;
     }
     PUT(p, GET(p) | 0x1);
     PUT(FOOT(p), GET(p));
@@ -170,7 +166,7 @@ void *mm_realloc(void *ptr, size_t size)
     return p;
 }
 /*
-trace  valid  util     ops      secs  Kops
+ trace  valid  util     ops      secs  Kops
  0       yes   85%    5694  0.000064 89388
  1       yes   89%    5848  0.000058100481
  2       yes   90%    6648  0.000077 86226
